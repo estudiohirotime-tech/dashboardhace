@@ -1,0 +1,14 @@
+{
+  "$comment": "Lista editável de parceiros/influenciadores e afiliados. Um utm_source que aparecer em 'influencers' ou 'affiliates' é classificado como channelGroup 'influencer'. Gerenciável pela tela /configuracoes.",
+  "influencers": [
+    "juliana_costa",
+    "pedro.henrique",
+    "camila.oficial",
+    "bruno_fit"
+  ],
+  "affiliates": [
+    "afiliados",
+    "parceiro-alpha",
+    "clube-indica"
+  ]
+}

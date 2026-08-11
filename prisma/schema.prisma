@@ -1,0 +1,154 @@
+// Dashboard Omnichannel — schema Prisma
+//
+// DEV usa SQLite (arquivo local, zero setup). Para produção, troque
+// `provider` para "postgresql" e aponte DATABASE_URL para o Postgres.
+// O restante do schema é compatível com os dois bancos.
+//
+// Regra de ouro: TODO valor monetário é INTEIRO EM CENTAVOS (BRL).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// Clientes
+// -----------------------------------------------------------------------------
+model Customer {
+  id           String   @id @default(cuid())
+  sourceSystem String // "shopify" | "pdv" | "mock"
+  externalId   String? // id do cliente no sistema de origem
+  name         String?
+  email        String?
+  isReturning  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  orders Order[]
+
+  @@unique([sourceSystem, externalId])
+  @@index([email])
+}
+
+// -----------------------------------------------------------------------------
+// Pedidos
+// -----------------------------------------------------------------------------
+model Order {
+  id           String   @id @default(cuid())
+  externalId   String // id no sistema de origem
+  sourceSystem String // "shopify" | "pdv" | "mock"
+  channel      String // "online" | "fisica"
+
+  createdAt DateTime // data real do pedido (na origem)
+  updatedAt DateTime // usado pelo backfill incremental
+
+  total           Int // centavos
+  currency        String @default("BRL")
+  itemsCount      Int    @default(0)
+  financialStatus String @default("paid") // pending | paid | refunded | partially_refunded
+
+  // Dimensões específicas da loja física (nulas no online)
+  vendedor      String?
+  unidade       String?
+  formaPagamento String?
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  attribution AttributionRecord?
+  items       OrderItem[]
+
+  syncedAt DateTime @default(now())
+
+  @@unique([sourceSystem, externalId])
+  @@index([createdAt])
+  @@index([channel])
+  @@index([updatedAt])
+}
+
+model OrderItem {
+  id          String @id @default(cuid())
+  orderId     String
+  order       Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  externalId  String?
+  productId   String?
+  title       String
+  quantity    Int    @default(1)
+  unitPrice   Int // centavos
+  total       Int // centavos
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+// -----------------------------------------------------------------------------
+// Atribuição (1:1 com pedido)
+// -----------------------------------------------------------------------------
+model AttributionRecord {
+  id      String @id @default(cuid())
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmContent  String?
+  utmTerm     String?
+  landingPage String?
+  referrer    String?
+
+  channelGroup String // paid_social | paid_search | organic_search | ...
+
+  // Jornada (quando disponível no plano da Shopify). JSON serializado.
+  firstTouch String? // JSON de TouchPoint | null
+  lastTouch  String? // JSON de TouchPoint | null
+
+  @@index([channelGroup])
+  @@index([utmCampaign])
+}
+
+// -----------------------------------------------------------------------------
+// Eventos de funil (comportamento) — alimentados pela Web Pixels Extension (Fase 6)
+// -----------------------------------------------------------------------------
+model FunnelEvent {
+  id           String   @id @default(cuid())
+  sourceSystem String // "shopify_pixel" | "mock"
+  sessionId    String?
+  stage        String // sessions | product_view | add_to_cart | checkout_started | checkout_info | purchase
+  channel      String   @default("online")
+  occurredAt   DateTime
+
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+
+  @@index([occurredAt])
+  @@index([stage])
+  @@index([utmCampaign])
+}
+
+// -----------------------------------------------------------------------------
+// Cursor de sincronização (backfill incremental por fonte)
+// -----------------------------------------------------------------------------
+model SyncCursor {
+  id           String   @id @default(cuid())
+  sourceSystem String   @unique // "shopify" | "pdv"
+  lastCursor   String? // endCursor da paginação GraphQL
+  lastSyncedAt DateTime? // maior updated_at já processado
+  updatedAt    DateTime @updatedAt
+}
+
+// -----------------------------------------------------------------------------
+// Parceiros / influenciadores — espelha partners.json para gestão via UI
+// -----------------------------------------------------------------------------
+model Partner {
+  id        String   @id @default(cuid())
+  source    String   @unique // valor de utm_source cadastrado
+  label     String
+  kind      String   @default("influencer") // influencer | affiliate
+  createdAt DateTime @default(now())
+}

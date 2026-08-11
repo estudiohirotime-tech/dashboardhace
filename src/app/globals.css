@@ -1,0 +1,172 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Tokens de design — paleta azul (dashboard escura).
+   Fonte única de verdade das cores, tipografia, raios e espaçamentos.
+   --------------------------------------------------------------------------- */
+
+:root {
+  /* Superfícies */
+  --bg-app: #0a0e1a;
+  --bg-surface: #111827;
+  --bg-elevated: #16203a;
+  --bg-inset: #0d1424;
+  --border: #1e293b;
+  --border-strong: #2a3a55;
+
+  /* Texto */
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #5a6b85;
+
+  /* Acento azul */
+  --accent: #3b82f6;
+  --accent-bright: #60a5fa;
+  --accent-deep: #1d4ed8;
+  --accent-soft: rgba(59, 130, 246, 0.12);
+
+  /* Semânticos */
+  --positive: #34d399;
+  --negative: #f87171;
+  --warning: #fbbf24;
+
+  /* Escala para gráficos multi-série (azul → ciano) */
+  --series-1: #60a5fa;
+  --series-2: #3b82f6;
+  --series-3: #2563eb;
+  --series-4: #22d3ee;
+  --series-5: #7dd3fc;
+  --series-6: #1e40af;
+
+  /* Card de destaque (usar UMA vez: maior gargalo do funil) */
+  --highlight-gradient: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 55%, #60a5fa 100%);
+
+  /* Tipografia */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: var(--font-mono-numeric), ui-monospace, "JetBrains Mono", "Geist Mono",
+    "SFMono-Regular", Menlo, Consolas, monospace;
+
+  /* Raios */
+  --radius-card: 16px;
+  --radius-inner: 12px;
+  --radius-btn: 10px;
+  --radius-badge: 8px;
+}
+
+/* Mapeia os tokens para o sistema de utilitários do Tailwind v4. */
+@theme inline {
+  --color-app: var(--bg-app);
+  --color-surface: var(--bg-surface);
+  --color-elevated: var(--bg-elevated);
+  --color-inset: var(--bg-inset);
+  --color-border-base: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+
+  --color-accent: var(--accent);
+  --color-accent-bright: var(--accent-bright);
+  --color-accent-deep: var(--accent-deep);
+  --color-accent-soft: var(--accent-soft);
+
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-warning: var(--warning);
+
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
+  --color-series-4: var(--series-4);
+  --color-series-5: var(--series-5);
+  --color-series-6: var(--series-6);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --radius-card: var(--radius-card);
+  --radius-inner: var(--radius-inner);
+  --radius-btn: var(--radius-btn);
+  --radius-badge: var(--radius-badge);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Números em tabela: alinhamento tabular perfeito. Não é opcional. */
+.tabular,
+table td,
+table th {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Rótulos: 12px/500, caixa alta, tracking. */
+.label-caps {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* Foco de teclado visível em tudo que é interativo. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Respeita prefers-reduced-motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Skeleton de carregamento (forma do conteúdo, sem spinner). */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-surface) 25%,
+    var(--bg-elevated) 50%,
+    var(--bg-surface) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+  border-radius: var(--radius-inner);
+}
