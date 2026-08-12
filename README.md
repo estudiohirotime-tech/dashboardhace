@@ -7,8 +7,8 @@ Arquitetura orientada a **adapters**: toda a UI consome uma interface única (`D
 ## Status por fase
 
 - [x] **Fase 1** — Setup, schema Prisma, tipos, `MockDataSource` completo, `.env.example`, agrupamento de canal + parser de UTM com testes.
-- [ ] **Fase 2** — UI completa em mock (todas as rotas e estados).
-- [ ] **Fase 3** — `ShopifyDataSource` (Admin API GraphQL, backfill, parser de UTM).
+- [x] **Fase 2** — UI completa em mock (todas as rotas e estados).
+- [x] **Fase 3** — `ShopifyDataSource` (Admin API GraphQL, backfill por cursor, parser de UTM aplicado aos pedidos, agrupamento de canal, validação Zod, persistência local). Modo **fixture** para demonstração sem credenciais.
 - [ ] **Fase 4** — Webhooks Shopify, fila e sincronização incremental.
 - [ ] **Fase 5** — `PdvDataSource` da loja física.
 - [ ] **Fase 6** — Web Pixels Extension e funil completo com eventos reais.
@@ -25,6 +25,22 @@ npm run dev                   # http://localhost:3000
 ```
 
 Sem nenhuma variável de ambiente, a aplicação sobe e renderiza todas as telas em modo demonstração.
+
+### Modo fictício da Shopify (demonstração sem credenciais)
+
+Com `SHOPIFY_FIXTURE=1`, a loja online fica **"conectada"** e alimenta o **pipeline real**
+(validação Zod → mapper de UTM → agrupamento de canal → banco) com payloads Shopify
+fictícios, sem rede nem token. Útil para ver a arquitetura funcionando ponta a ponta.
+
+```bash
+echo 'SHOPIFY_FIXTURE=1' >> .env
+npm run db:push
+npm run sync:shopify -- --full   # backfill fictício -> banco (~3s, ~4k pedidos)
+npm run dev
+```
+
+O backfill também roda sozinho na primeira leitura (lazy). Para dados reais, deixe
+`SHOPIFY_FIXTURE` vazio e preencha `SHOPIFY_STORE_DOMAIN` + `SHOPIFY_ADMIN_ACCESS_TOKEN`.
 
 ## Scripts
 
