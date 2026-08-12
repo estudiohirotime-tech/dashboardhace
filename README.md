@@ -9,7 +9,7 @@ Arquitetura orientada a **adapters**: toda a UI consome uma interface única (`D
 - [x] **Fase 1** — Setup, schema Prisma, tipos, `MockDataSource` completo, `.env.example`, agrupamento de canal + parser de UTM com testes.
 - [x] **Fase 2** — UI completa em mock (todas as rotas e estados).
 - [x] **Fase 3** — `ShopifyDataSource` (Admin API GraphQL, backfill por cursor, parser de UTM aplicado aos pedidos, agrupamento de canal, validação Zod, persistência local). Modo **fixture** para demonstração sem credenciais.
-- [ ] **Fase 4** — Webhooks Shopify, fila e sincronização incremental.
+- [x] **Fase 4** — Webhooks Shopify (validação HMAC, fila em processo, upsert incremental) + simulador de entrega assinada.
 - [ ] **Fase 5** — `PdvDataSource` da loja física.
 - [ ] **Fase 6** — Web Pixels Extension e funil completo com eventos reais.
 - [ ] **Fase 7** — Exportação CSV, seletor de modelo de atribuição e polimento.
@@ -41,6 +41,23 @@ npm run dev
 
 O backfill também roda sozinho na primeira leitura (lazy). Para dados reais, deixe
 `SHOPIFY_FIXTURE` vazio e preencha `SHOPIFY_STORE_DOMAIN` + `SHOPIFY_ADMIN_ACCESS_TOKEN`.
+
+### Webhooks (sincronização em tempo real)
+
+Endpoint: `POST /api/webhooks/shopify`. Valida o HMAC (`SHOPIFY_WEBHOOK_SECRET`),
+responde 200 rápido e processa em fila os tópicos `orders/create`, `orders/updated`,
+`orders/paid`, `orders/cancelled`, `refunds/create`. O **backfill incremental**
+(cobre webhooks perdidos) é `POST /api/sync/shopify` — agende a cada 15 min via cron.
+
+Simular uma entrega assinada (com o servidor rodando):
+
+```bash
+npm run webhook:simulate -- orders/create   # cria/atualiza um pedido fictício
+npm run webhook:simulate -- refunds/create  # marca reembolso
+```
+
+Em desenvolvimento com uma loja real, exponha o endpoint via Shopify CLI
+(`shopify app dev`) ou um túnel (cloudflared/ngrok) e cadastre os webhooks.
 
 ## Scripts
 
