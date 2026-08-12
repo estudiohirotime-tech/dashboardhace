@@ -3,17 +3,20 @@
 import { Card, CardTitle, DemoBadge, Skeleton, Badge } from "@/components/ui/primitives";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { useAttribution } from "@/hooks/use-analytics";
+import { useAttributionModel } from "@/hooks/use-attribution-model";
 import { channelGroupLabel, CHANNEL_GROUP_COLORS } from "@/lib/labels";
 import { formatBRL, formatInt, formatPercent } from "@/lib/format";
 
 export function AttributionTable() {
   const { data, isLoading, isError, refetch } = useAttribution();
+  const model = useAttributionModel();
   const rows = data?.rows ?? [];
 
   return (
     <Card className="flex flex-col">
-      <div className="mb-4 flex items-center gap-2">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         <CardTitle className="text-base">Atribuição por UTM</CardTitle>
+        <Badge tone="muted">{model === "first_click" ? "1º clique" : "Último clique"}</Badge>
         {data?.isMock && <DemoBadge />}
       </div>
 

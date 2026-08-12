@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAttributionModel, setAttributionModel } from "@/hooks/use-attribution-model";
 import { RefreshCw, Plus, X, CheckCircle2, AlertCircle } from "lucide-react";
 import { Card, CardTitle, Badge, Button, Skeleton } from "@/components/ui/primitives";
 import { useSourceMeta } from "@/hooks/use-analytics";
@@ -175,16 +176,10 @@ function PartnersManager() {
 // --- Modelo de atribuição -----------------------------------------------------
 
 function AttributionModel() {
-  const [model, setModel] = useState<"first_click" | "last_click">("last_click");
-
-  useEffect(() => {
-    const saved = localStorage.getItem("attribution_model");
-    if (saved === "first_click" || saved === "last_click") setModel(saved);
-  }, []);
+  const model = useAttributionModel();
 
   function choose(m: "first_click" | "last_click") {
-    setModel(m);
-    localStorage.setItem("attribution_model", m);
+    setAttributionModel(m);
   }
 
   const options: { key: "first_click" | "last_click"; label: string; desc: string }[] = [

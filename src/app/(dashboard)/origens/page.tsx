@@ -1,8 +1,7 @@
 import { Topbar } from "@/components/dashboard/topbar";
 import { AttributionTable } from "@/components/dashboard/attribution-table";
 import { ChannelRevenueBar } from "@/components/dashboard/channel-revenue-bar";
-import { Card } from "@/components/ui/primitives";
-import { Info } from "lucide-react";
+import { RoiPanel } from "@/components/dashboard/roi-panel";
 
 export default function OrigensPage() {
   return (
@@ -18,13 +17,7 @@ export default function OrigensPage() {
           </div>
         </section>
 
-        <Card className="flex items-start gap-3">
-          <Info size={18} style={{ color: "var(--accent-bright)" }} className="mt-0.5 shrink-0" />
-          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-            O comparativo de ROI por canal aparece aqui quando houver custo de mídia informado por
-            campanha. A entrada de custos e o cálculo de ROAS entram na Fase 7.
-          </p>
-        </Card>
+        <RoiPanel />
       </div>
     </>
   );

@@ -36,3 +36,8 @@ export function granularityFromRequest(req: NextRequest): Granularity {
   const g = req.nextUrl.searchParams.get("granularity");
   return g === "week" || g === "month" ? g : "day";
 }
+
+export function attributionModelFromRequest(req: NextRequest): "first_click" | "last_click" {
+  const m = req.nextUrl.searchParams.get("attribution");
+  return m === "first_click" ? "first_click" : "last_click";
+}

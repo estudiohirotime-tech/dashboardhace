@@ -3,6 +3,10 @@
 // Usado no modo SHOPIFY_FIXTURE=1 para exercitar TODO o pipeline real
 // (validação Zod -> mapper de UTM -> agrupamento de canal -> persistência)
 // sem depender de credenciais ou rede. Seed fixa: dados estáveis.
+//
+// Parte dos pedidos tem PRIMEIRO e ÚLTIMO toque divergentes (ex: descoberta
+// via social pago, fechamento via direto/e-mail), para o seletor de modelo de
+// atribuição (1º x último clique) ter efeito visível.
 // -----------------------------------------------------------------------------
 
 import { Rng } from "../mock/rng";
@@ -29,6 +33,14 @@ const GROUP_MIX: { group: Group; weight: number }[] = [
   { group: "organic_search", weight: 0.08 },
 ];
 
+// Canais típicos de DESCOBERTA (primeiro toque).
+const DISCOVERY_MIX: { group: Group; weight: number }[] = [
+  { group: "paid_social", weight: 0.4 },
+  { group: "organic_social", weight: 0.3 },
+  { group: "paid_search", weight: 0.2 },
+  { group: "organic_search", weight: 0.1 },
+];
+
 const FIN = [
   { status: "PAID", weight: 0.88 },
   { status: "PENDING", weight: 0.06 },
@@ -47,7 +59,7 @@ interface UtmSet {
   campaign: string;
 }
 
-const GROUP_UTM: Record<Exclude<Group, "organic_social" | "organic_search" | "direct">, UtmSet[]> = {
+const GROUP_UTM: Record<"paid_social" | "paid_search" | "email", UtmSet[]> = {
   paid_social: [
     { source: "instagram", medium: "paid_social", campaign: "verao-2026" },
     { source: "facebook", medium: "cpc", campaign: "remarketing-carrinho" },
@@ -62,6 +74,53 @@ const GROUP_UTM: Record<Exclude<Group, "organic_social" | "organic_search" | "di
     { source: "rd-station", medium: "newsletter", campaign: "newsletter-semanal" },
   ],
 };
+
+interface AttributionShape {
+  landingPageUrl: string | null;
+  referrerUrl: string | null;
+  customAttributes: { key: string; value: string }[];
+  utmParameters: { source: string; medium: string; campaign: string; content: string | null; term: string | null } | null;
+}
+
+function attributionFor(group: Group, rng: Rng, allowCustomAttrs: boolean): AttributionShape {
+  const customAttributes: { key: string; value: string }[] = [];
+  let landingPageUrl: string | null = "https://loja-ficticia.com.br/";
+  let referrerUrl: string | null = null;
+  let utmParameters: AttributionShape["utmParameters"] = null;
+
+  if (group === "paid_social" || group === "paid_search" || group === "email") {
+    const set = rng.pick(GROUP_UTM[group]);
+    if (allowCustomAttrs && rng.chance(0.15)) {
+      landingPageUrl = "https://loja-ficticia.com.br/produtos";
+      customAttributes.push({ key: "utm_source", value: set.source });
+      customAttributes.push({ key: "utm_medium", value: set.medium });
+      customAttributes.push({ key: "utm_campaign", value: set.campaign });
+    } else {
+      landingPageUrl = `https://loja-ficticia.com.br/?utm_source=${set.source}&utm_medium=${set.medium}&utm_campaign=${set.campaign}`;
+    }
+    referrerUrl =
+      group === "paid_search"
+        ? "https://www.googleadservices.com/pagead/aclk"
+        : group === "email"
+          ? null
+          : "https://l.instagram.com/";
+    utmParameters = {
+      source: set.source,
+      medium: set.medium,
+      campaign: set.campaign,
+      content: rng.chance(0.4) ? "criativo-a" : null,
+      term: group === "paid_search" ? "tenis corrida" : null,
+    };
+  } else if (group === "organic_social") {
+    referrerUrl = "https://l.instagram.com/";
+  } else if (group === "organic_search") {
+    referrerUrl = "https://www.google.com/";
+  } else {
+    referrerUrl = null; // direct
+  }
+
+  return { landingPageUrl, referrerUrl, customAttributes, utmParameters };
+}
 
 function isoAt(day: string, hour: number, rng: Rng): string {
   const hh = String(hour).padStart(2, "0");
@@ -100,72 +159,46 @@ function buildUniverse(): RawNode[] {
         HOUR_WEIGHTS,
       );
       const createdAt = isoAt(day, hour, rng);
-      const group = rng.weighted(
+
+      // Último toque (converte): dita landingPageUrl/referrer/customAttributes.
+      const lastGroup = rng.weighted(
         GROUP_MIX.map((g) => g.group),
         GROUP_MIX.map((g) => g.weight),
       );
+      const last = attributionFor(lastGroup, rng, true);
+
+      // Primeiro toque (descoberta): 40% dos casos difere do último.
+      let firstGroup = lastGroup;
+      if (rng.chance(0.4)) {
+        firstGroup = rng.weighted(
+          DISCOVERY_MIX.map((g) => g.group),
+          DISCOVERY_MIX.map((g) => g.weight),
+        );
+      }
+      const first = firstGroup === lastGroup ? last : attributionFor(firstGroup, rng, false);
+
       const status = rng.weighted(
         FIN.map((f) => f.status),
         FIN.map((f) => f.weight),
       );
 
-      // Atribuição em formato bruto Shopify.
-      let landingPageUrl: string | null = "https://loja-ficticia.com.br/";
-      let referrerUrl: string | null = null;
-      const customAttributes: { key: string; value: string }[] = [];
-      let visitUtm: { source: string; medium: string; campaign: string; content: string | null; term: string | null } | null =
-        null;
-
-      if (group === "paid_social" || group === "paid_search" || group === "email") {
-        const set = rng.pick(GROUP_UTM[group]);
-        // ~15% dos casos gravam UTM só em customAttributes (campo oculto do tema).
-        if (rng.chance(0.15)) {
-          landingPageUrl = "https://loja-ficticia.com.br/produtos";
-          customAttributes.push({ key: "utm_source", value: set.source });
-          customAttributes.push({ key: "utm_medium", value: set.medium });
-          customAttributes.push({ key: "utm_campaign", value: set.campaign });
-        } else {
-          landingPageUrl = `https://loja-ficticia.com.br/?utm_source=${set.source}&utm_medium=${set.medium}&utm_campaign=${set.campaign}`;
-        }
-        referrerUrl =
-          group === "paid_search"
-            ? "https://www.googleadservices.com/pagead/aclk"
-            : group === "email"
-              ? null
-              : "https://l.instagram.com/";
-        visitUtm = {
-          source: set.source,
-          medium: set.medium,
-          campaign: set.campaign,
-          content: rng.chance(0.4) ? "criativo-a" : null,
-          term: group === "paid_search" ? "tenis corrida" : null,
-        };
-      } else if (group === "organic_social") {
-        referrerUrl = "https://l.instagram.com/";
-      } else if (group === "organic_search") {
-        referrerUrl = "https://www.google.com/";
-      } else {
-        referrerUrl = null; // direct
-      }
-
-      // Jornada: ~85% das lojas expõem a jornada completa (depende do plano).
       const journeyReady = rng.chance(0.85);
       const firstVisitAt = new Date(new Date(createdAt).getTime() - rng.int(1, 6) * 86400 * 1000).toISOString();
       const lastVisitAt = new Date(new Date(createdAt).getTime() - rng.int(2, 90) * 60 * 1000).toISOString();
 
-      const makeVisit = (occurredAt: string) => ({
+      const makeVisit = (occurredAt: string, shape: AttributionShape) => ({
         occurredAt,
-        landingPage: landingPageUrl,
-        referrerUrl,
-        source: visitUtm?.source ?? null,
-        sourceType: visitUtm ? "utm" : referrerUrl ? "referral" : "direct",
-        utmParameters: visitUtm
+        landingPage: shape.landingPageUrl,
+        referrerUrl: shape.referrerUrl,
+        source: shape.utmParameters?.source ?? null,
+        sourceType: shape.utmParameters ? "utm" : shape.referrerUrl ? "referral" : "direct",
+        utmParameters: shape.utmParameters
           ? {
-              source: visitUtm.source,
-              medium: visitUtm.medium,
-              campaign: visitUtm.campaign,
-              content: visitUtm.content,
-              term: visitUtm.term,
+              source: shape.utmParameters.source,
+              medium: shape.utmParameters.medium,
+              campaign: shape.utmParameters.campaign,
+              content: shape.utmParameters.content,
+              term: shape.utmParameters.term,
             }
           : null,
       });
@@ -193,8 +226,8 @@ function buildUniverse(): RawNode[] {
         };
       });
 
-      const first = rng.pick(FIRST_NAMES);
-      const last = rng.pick(LAST_NAMES);
+      const firstName = rng.pick(FIRST_NAMES);
+      const lastName = rng.pick(LAST_NAMES);
       const returning = rng.chance(0.35);
       const hasCustomer = rng.chance(0.92);
 
@@ -205,22 +238,22 @@ function buildUniverse(): RawNode[] {
         updatedAt: createdAt,
         displayFinancialStatus: status,
         currentTotalPriceSet: money(total),
-        landingPageUrl,
-        referrerUrl,
+        landingPageUrl: last.landingPageUrl,
+        referrerUrl: last.referrerUrl,
         note: null,
-        customAttributes,
+        customAttributes: last.customAttributes,
         customerJourneySummary: {
           ready: journeyReady,
           momentsCount: journeyReady ? rng.int(2, 12) : null,
-          firstVisit: journeyReady ? makeVisit(firstVisitAt) : null,
-          lastVisit: journeyReady ? makeVisit(lastVisitAt) : null,
+          firstVisit: journeyReady ? makeVisit(firstVisitAt, first) : null,
+          lastVisit: journeyReady ? makeVisit(lastVisitAt, last) : null,
         },
         customer: hasCustomer
           ? {
               id: `gid://shopify/Customer/${rng.int(1, returning ? 500 : 90000)}`,
-              firstName: first,
-              lastName: last,
-              email: `${first}.${last}`.toLowerCase().replace(/[^a-z.]/g, "") + `@${rng.pick(EMAIL_DOMAINS)}`,
+              firstName,
+              lastName,
+              email: `${firstName}.${lastName}`.toLowerCase().replace(/[^a-z.]/g, "") + `@${rng.pick(EMAIL_DOMAINS)}`,
               numberOfOrders: returning ? rng.int(2, 9) : 1,
             }
           : null,
@@ -233,7 +266,6 @@ function buildUniverse(): RawNode[] {
     }
   }
 
-  // Backfill pagina por updated_at ascendente.
   nodes.sort((a, b) => a.updatedAtSort.localeCompare(b.updatedAtSort));
   return nodes;
 }
@@ -267,9 +299,7 @@ export function getFixturePage(variables: {
 }) {
   const all = getUniverse();
   const updatedMin = parseUpdatedAtMin(variables.query);
-  const filtered = updatedMin
-    ? all.filter((n) => n.updatedAtSort > updatedMin)
-    : all;
+  const filtered = updatedMin ? all.filter((n) => n.updatedAtSort > updatedMin) : all;
 
   const startIdx = decodeCursor(variables.after) + 1;
   const slice = filtered.slice(startIdx, startIdx + variables.first);
@@ -281,16 +311,11 @@ export function getFixturePage(variables: {
     data: {
       orders: {
         edges,
-        pageInfo: {
-          hasNextPage,
-          endCursor: edges.length ? encodeCursor(endIndex) : null,
-        },
+        pageInfo: { hasNextPage, endCursor: edges.length ? encodeCursor(endIndex) : null },
       },
     },
     extensions: {
-      cost: {
-        throttleStatus: { currentlyAvailable: 1900, maximumAvailable: 2000, restoreRate: 100 },
-      },
+      cost: { throttleStatus: { currentlyAvailable: 1900, maximumAvailable: 2000, restoreRate: 100 } },
     },
   };
 }

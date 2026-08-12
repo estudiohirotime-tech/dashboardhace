@@ -189,7 +189,22 @@ export function stagesFromCounts(
   return stages;
 }
 
-export function attributionBreakdown(orders: Order[]): AttributionRow[] {
+export type AttributionModel = "first_click" | "last_click";
+
+/** Atribuição efetiva de um pedido conforme o modelo escolhido. */
+export function effectiveAttribution(
+  order: Order,
+  model: AttributionModel,
+): { channelGroup: ChannelGroup; utmSource: string | null; utmMedium: string | null; utmCampaign: string | null } {
+  if (model === "first_click" && order.attribution.firstTouch) {
+    const t = order.attribution.firstTouch;
+    return { channelGroup: t.channelGroup, utmSource: t.source, utmMedium: t.medium, utmCampaign: t.campaign };
+  }
+  const a = order.attribution;
+  return { channelGroup: a.channelGroup, utmSource: a.utmSource, utmMedium: a.utmMedium, utmCampaign: a.utmCampaign };
+}
+
+export function attributionBreakdown(orders: Order[], model: AttributionModel = "last_click"): AttributionRow[] {
   const revenue = orders.filter(isRevenue);
   const totalRevenue = revenue.reduce((a, o) => a + o.total, 0) || 1;
 
@@ -207,7 +222,7 @@ export function attributionBreakdown(orders: Order[]): AttributionRow[] {
   >();
 
   for (const o of revenue) {
-    const a = o.attribution;
+    const a = effectiveAttribution(o, model);
     const key = `${a.channelGroup}|${a.utmSource ?? ""}|${a.utmMedium ?? ""}|${a.utmCampaign ?? ""}`;
     let row = map.get(key);
     if (!row) {

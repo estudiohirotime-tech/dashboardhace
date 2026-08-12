@@ -21,6 +21,11 @@ import type {
 import { previousPeriod } from "@/lib/period";
 import { dayKey } from "@/lib/date";
 import { funnelFromEvents } from "@/lib/data-sources/pixel/funnel";
+import {
+  attributionBreakdown,
+  effectiveAttribution,
+  type AttributionModel,
+} from "@/lib/data-sources/aggregations";
 
 function isRevenue(o: Order): boolean {
   return o.financialStatus !== "refunded";
@@ -238,11 +243,14 @@ export interface ChannelSplit {
   isMock: boolean;
 }
 
-export async function getChannelSplit(range: DateRange): Promise<ChannelSplit> {
+export async function getChannelSplit(
+  range: DateRange,
+  model: AttributionModel = "last_click",
+): Promise<ChannelSplit> {
   const cur = await collectOrders(range);
   const map = new Map<ChannelGroup, { revenue: number; orders: number }>();
   for (const o of cur.all.filter(isRevenue)) {
-    const g = o.attribution.channelGroup;
+    const g = effectiveAttribution(o, model).channelGroup;
     const row = map.get(g) ?? { revenue: 0, orders: 0 };
     row.revenue += o.total;
     row.orders += 1;
@@ -325,20 +333,15 @@ export async function getFunnel(range: DateRange, filters?: OrderFilters): Promi
   return { ...snap, channel };
 }
 
-// --- Atribuição (merge das duas fontes) --------------------------------------
+// --- Atribuição (merge das duas fontes, conforme o modelo) -------------------
 
-export async function getAttribution(range: DateRange): Promise<{ rows: AttributionRow[]; isMock: boolean }> {
-  const { online, fisica } = await registry.resolveAll();
-  const [onlineRows, fisicaRows] = await Promise.all([
-    online.source.getAttributionBreakdown(range),
-    fisica.source.getAttributionBreakdown(range),
-  ]);
-  const rows = [...onlineRows, ...fisicaRows];
-  const total = rows.reduce((a, r) => a + r.revenue, 0) || 1;
-  const normalized = rows
-    .map((r) => ({ ...r, revenueShare: r.revenue / total }))
-    .sort((a, b) => b.revenue - a.revenue);
-  return { rows: normalized, isMock: online.isMock || fisica.isMock };
+export async function getAttribution(
+  range: DateRange,
+  model: AttributionModel = "last_click",
+): Promise<{ rows: AttributionRow[]; isMock: boolean; model: AttributionModel }> {
+  const cur = await collectOrders(range);
+  const rows = attributionBreakdown(cur.all, model);
+  return { rows, isMock: cur.isMock, model };
 }
 
 // --- Produtos (merge) ---------------------------------------------------------

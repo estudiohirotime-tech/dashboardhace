@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { usePeriod } from "./use-period";
+import { useAttributionModel } from "./use-attribution-model";
 import type {
   Overview,
   RevenueTimeseries,
@@ -37,9 +38,10 @@ export function useTimeseries(granularity: Granularity) {
 
 export function useChannelSplit() {
   const { periodQuery } = usePeriod();
+  const model = useAttributionModel();
   return useQuery({
-    queryKey: ["channel-split", periodQuery],
-    queryFn: () => fetchJson<ChannelSplit>(`/api/channel-split?${periodQuery}`),
+    queryKey: ["channel-split", periodQuery, model],
+    queryFn: () => fetchJson<ChannelSplit>(`/api/channel-split?${periodQuery}&attribution=${model}`),
   });
 }
 
@@ -64,9 +66,13 @@ export function useFunnel(extra?: Record<string, string | undefined>) {
 
 export function useAttribution() {
   const { periodQuery } = usePeriod();
+  const model = useAttributionModel();
   return useQuery({
-    queryKey: ["attribution", periodQuery],
-    queryFn: () => fetchJson<{ rows: AttributionRow[]; isMock: boolean }>(`/api/attribution?${periodQuery}`),
+    queryKey: ["attribution", periodQuery, model],
+    queryFn: () =>
+      fetchJson<{ rows: AttributionRow[]; isMock: boolean; model: string }>(
+        `/api/attribution?${periodQuery}&attribution=${model}`,
+      ),
   });
 }
 

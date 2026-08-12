@@ -12,7 +12,7 @@ Arquitetura orientada a **adapters**: toda a UI consome uma interface única (`D
 - [x] **Fase 4** — Webhooks Shopify (validação HMAC, fila em processo, upsert incremental) + simulador de entrega assinada.
 - [x] **Fase 5** — `PdvDataSource` da loja física (mapper isolado por sistema; **Bling** implementado) com backfill, persistência e ponte de atribuição por cupom. Modo **fixture** para demonstração sem credenciais.
 - [x] **Fase 6** — Web Pixels Extension + funil completo (6 etapas) a partir de **eventos reais** de comportamento (`FunnelEvent`), filtrável por campanha; fallback para o estimado quando não há eventos.
-- [ ] **Fase 7** — Seletor de modelo de atribuição aplicado, ROI por campanha e polimento.
+- [x] **Fase 7** — Seletor de modelo de atribuição (1º vs último clique) **aplicado ao cálculo**, ROI/ROAS por canal e polimento. (Exportação CSV já entregue na Fase 2.)
 
 ## Rodando localmente
 
@@ -94,6 +94,19 @@ persiste em `FunnelEvent`. O funil passa a ser **real e filtrável por campanha*
 - No modo `SHOPIFY_FIXTURE=1`, um stream de eventos fictício é gerado na primeira
   leitura do funil, deixando as 6 etapas reais na demonstração. Sem eventos no
   período, o funil cai no estimado (Opção C) e sinaliza demonstração.
+
+### Modelo de atribuição (1º vs último clique)
+
+Em **Configurações**, o seletor de modelo é **aplicado ao cálculo** de atribuição
+e participação por canal (não é só cosmético):
+
+- **Último clique** — crédito à origem que converteu (`landingPage`/último toque).
+- **Primeiro clique** — crédito à origem que iniciou a jornada (`firstTouch` do
+  `customerJourneySummary`), deslocando receita para os canais de descoberta.
+
+O modelo viaja como `?attribution=first_click|last_click` para as APIs, aplicado
+no servidor. A tela **Origens** também traz ROI/ROAS por canal (informe o custo
+de mídia do período — salvo no navegador).
 
 ## Scripts
 
