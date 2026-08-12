@@ -10,7 +10,7 @@ Arquitetura orientada a **adapters**: toda a UI consome uma interface única (`D
 - [x] **Fase 2** — UI completa em mock (todas as rotas e estados).
 - [x] **Fase 3** — `ShopifyDataSource` (Admin API GraphQL, backfill por cursor, parser de UTM aplicado aos pedidos, agrupamento de canal, validação Zod, persistência local). Modo **fixture** para demonstração sem credenciais.
 - [x] **Fase 4** — Webhooks Shopify (validação HMAC, fila em processo, upsert incremental) + simulador de entrega assinada.
-- [ ] **Fase 5** — `PdvDataSource` da loja física.
+- [x] **Fase 5** — `PdvDataSource` da loja física (mapper isolado por sistema; **Bling** implementado) com backfill, persistência e ponte de atribuição por cupom. Modo **fixture** para demonstração sem credenciais.
 - [ ] **Fase 6** — Web Pixels Extension e funil completo com eventos reais.
 - [ ] **Fase 7** — Exportação CSV, seletor de modelo de atribuição e polimento.
 
@@ -58,6 +58,27 @@ npm run webhook:simulate -- refunds/create  # marca reembolso
 
 Em desenvolvimento com uma loja real, exponha o endpoint via Shopify CLI
 (`shopify app dev`) ou um túnel (cloudflared/ngrok) e cadastre os webhooks.
+
+### Modo fictício do PDV / loja física (Bling)
+
+Com `PDV_FIXTURE=1`, a loja física fica **"conectada"** ao **Bling** (fictício) e
+alimenta o pipeline real (mapper por sistema → banco). O mapper é isolado por
+sistema em `src/lib/data-sources/pdv/mappers/` — trocar de ERP é escrever outro
+mapper. Um cupom/código de vendedor vira ponte de atribuição (`utmCampaign`).
+
+```bash
+echo 'PDV_FIXTURE=1' >> .env
+npm run sync:pdv -- --full   # backfill fictício de vendas -> banco (~1,5s)
+```
+
+Também roda sozinho na primeira leitura (lazy). Para dados reais, defina
+`PDV_SYSTEM`, `PDV_API_BASE_URL`, `PDV_API_KEY` e `PDV_AUTH_TYPE`.
+
+Ligando as duas fontes fictícias de uma vez:
+
+```bash
+SHOPIFY_FIXTURE=1 PDV_FIXTURE=1 npm run dev
+```
 
 ## Scripts
 

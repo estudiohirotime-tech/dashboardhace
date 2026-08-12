@@ -16,6 +16,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "sync:shopify": "tsx scripts/sync-shopify.ts",
+    "sync:pdv": "tsx scripts/sync-pdv.ts",
     "webhook:simulate": "tsx scripts/simulate-webhook.ts"
   },
   "dependencies": {
