@@ -11,8 +11,8 @@ Arquitetura orientada a **adapters**: toda a UI consome uma interface única (`D
 - [x] **Fase 3** — `ShopifyDataSource` (Admin API GraphQL, backfill por cursor, parser de UTM aplicado aos pedidos, agrupamento de canal, validação Zod, persistência local). Modo **fixture** para demonstração sem credenciais.
 - [x] **Fase 4** — Webhooks Shopify (validação HMAC, fila em processo, upsert incremental) + simulador de entrega assinada.
 - [x] **Fase 5** — `PdvDataSource` da loja física (mapper isolado por sistema; **Bling** implementado) com backfill, persistência e ponte de atribuição por cupom. Modo **fixture** para demonstração sem credenciais.
-- [ ] **Fase 6** — Web Pixels Extension e funil completo com eventos reais.
-- [ ] **Fase 7** — Exportação CSV, seletor de modelo de atribuição e polimento.
+- [x] **Fase 6** — Web Pixels Extension + funil completo (6 etapas) a partir de **eventos reais** de comportamento (`FunnelEvent`), filtrável por campanha; fallback para o estimado quando não há eventos.
+- [ ] **Fase 7** — Seletor de modelo de atribuição aplicado, ROI por campanha e polimento.
 
 ## Rodando localmente
 
@@ -79,6 +79,21 @@ Ligando as duas fontes fictícias de uma vez:
 ```bash
 SHOPIFY_FIXTURE=1 PDV_FIXTURE=1 npm run dev
 ```
+
+### Funil real (Web Pixels Extension)
+
+A Admin API só entrega pedidos; o funil das 6 etapas exige eventos de
+comportamento. A extensão em `extensions/funil-web-pixel/` escuta os eventos
+padrão do storefront (`page_viewed`, `product_viewed`, `product_added_to_cart`,
+`checkout_started`, `checkout_contact_info_submitted`, `checkout_completed`),
+carimba as UTMs da sessão (1º clique) e envia para `POST /api/pixel`, que
+persiste em `FunnelEvent`. O funil passa a ser **real e filtrável por campanha**.
+
+- Deploy da extensão: `shopify app deploy` (num app Shopify), depois ative o
+  pixel no admin e configure o campo `endpoint` para `https://SEU_APP/api/pixel`.
+- No modo `SHOPIFY_FIXTURE=1`, um stream de eventos fictício é gerado na primeira
+  leitura do funil, deixando as 6 etapas reais na demonstração. Sem eventos no
+  período, o funil cai no estimado (Opção C) e sinaliza demonstração.
 
 ## Scripts
 

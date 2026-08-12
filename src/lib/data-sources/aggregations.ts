@@ -147,6 +147,48 @@ export function buildFunnelStages(purchases: number, opts: FunnelOptions): Funne
   return stages;
 }
 
+const STAGE_ORDER: FunnelStageKey[] = [
+  "sessions",
+  "product_view",
+  "add_to_cart",
+  "checkout_started",
+  "checkout_info",
+  "purchase",
+];
+
+/**
+ * Constrói as 6 etapas a partir de CONTAGENS REAIS por etapa (ex: eventos de
+ * comportamento da Web Pixels Extension). isMock=false por padrão.
+ */
+export function stagesFromCounts(
+  counts: Partial<Record<FunnelStageKey, number>>,
+  isMock = false,
+): FunnelStage[] {
+  const resolved = STAGE_ORDER.map((k) => counts[k] ?? 0);
+  const top = resolved[0] || 1;
+
+  const stages: FunnelStage[] = STAGE_ORDER.map((key, i) => {
+    const count = resolved[i]!;
+    const prev = i === 0 ? count : resolved[i - 1]!;
+    const conversionFromPrevious = i === 0 ? 1 : prev === 0 ? 0 : count / prev;
+    const conversionFromTop = top === 0 ? 0 : count / top;
+    const dropOff = i === 0 ? 0 : Math.max(0, prev - count);
+    return { key, label: STAGE_LABELS[key], count, conversionFromPrevious, conversionFromTop, dropOff, isMock };
+  });
+
+  let bottleneckIdx = -1;
+  let worst = -1;
+  for (let i = 1; i < stages.length; i++) {
+    const drop = 1 - stages[i]!.conversionFromPrevious;
+    if (stages[i - 1]!.count > 0 && drop > worst) {
+      worst = drop;
+      bottleneckIdx = i;
+    }
+  }
+  if (bottleneckIdx >= 0) stages[bottleneckIdx]!.isBottleneck = true;
+  return stages;
+}
+
 export function attributionBreakdown(orders: Order[]): AttributionRow[] {
   const revenue = orders.filter(isRevenue);
   const totalRevenue = revenue.reduce((a, o) => a + o.total, 0) || 1;

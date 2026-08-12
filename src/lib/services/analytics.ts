@@ -20,6 +20,7 @@ import type {
 } from "@/lib/data-sources/types";
 import { previousPeriod } from "@/lib/period";
 import { dayKey } from "@/lib/date";
+import { funnelFromEvents } from "@/lib/data-sources/pixel/funnel";
 
 function isRevenue(o: Order): boolean {
   return o.financialStatus !== "refunded";
@@ -314,7 +315,12 @@ export async function getFunnel(range: DateRange, filters?: OrderFilters): Promi
   if (channel === "fisica") {
     return fisica.source.getFunnel(range, filters);
   }
-  // "all" e "online" usam o funil da loja online (única com etapas pré-compra).
+
+  // Funil REAL por eventos de comportamento (Web Pixels Extension), quando houver.
+  const eventFunnel = await funnelFromEvents(range, filters);
+  if (eventFunnel) return { ...eventFunnel, channel };
+
+  // Fallback (Opção C): funil estimado a partir dos pedidos da loja online.
   const snap = await online.source.getFunnel(range, { ...filters, channel: undefined });
   return { ...snap, channel };
 }
