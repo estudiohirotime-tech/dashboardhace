@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Radio,
@@ -13,6 +13,7 @@ import {
   PanelLeftClose,
   PanelLeft,
   Store,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +28,14 @@ const NAV = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/login");
+    router.refresh();
+  }
 
   return (
     <aside
@@ -81,8 +89,21 @@ export function Sidebar() {
       </nav>
 
       <button
+        onClick={logout}
+        title="Sair"
+        className={cn(
+          "mx-3 mt-3 flex items-center gap-3 rounded-[10px] px-3 py-2 text-sm font-medium",
+          collapsed && "justify-center",
+        )}
+        style={{ color: "var(--text-secondary)" }}
+      >
+        <LogOut size={18} className="shrink-0" />
+        {!collapsed && <span>Sair</span>}
+      </button>
+
+      <button
         onClick={() => setCollapsed((c) => !c)}
-        className="m-3 flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm"
+        className="m-3 mt-1 flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm"
         style={{ color: "var(--text-muted)" }}
         aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
       >
