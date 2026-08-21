@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "prisma generate && prisma migrate deploy && next build",
+  "crons": [
+    {
+      "path": "/api/sync/all",
+      "schedule": "*/15 * * * *"
+    }
+  ],
+  "functions": {
+    "src/app/api/sync/all/route.ts": { "maxDuration": 300 },
+    "src/app/api/sync/shopify/route.ts": { "maxDuration": 300 },
+    "src/app/api/sync/pdv/route.ts": { "maxDuration": 300 }
+  }
+}

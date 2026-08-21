@@ -16,15 +16,25 @@ Arquitetura orientada a **adapters**: toda a UI consome uma interface única (`D
 
 ## Rodando localmente
 
+Requer um **PostgreSQL** (local via Docker, ou um banco Neon/Vercel Postgres gratuito).
+
 ```bash
 npm install
-cp .env.example .env          # opcional — sobe 100% em mock sem nada preenchido
-npm run db:push               # cria o SQLite local (dev.db)
-npm run db:seed               # opcional: popula o banco com mock (valida o schema)
+cp .env.example .env          # ajuste DATABASE_URL para o seu Postgres
+npm run db:migrate            # aplica as migrations (prisma migrate deploy)
 npm run dev                   # http://localhost:3000
 ```
 
-Sem nenhuma variável de ambiente, a aplicação sobe e renderiza todas as telas em modo demonstração.
+Postgres local rápido com Docker:
+
+```bash
+docker run --name dash-pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:16
+# DATABASE_URL="postgresql://postgres:postgres@localhost:5432/postgres?schema=public"
+```
+
+Sem credenciais de Shopify/PDV, a aplicação sobe e renderiza todas as telas em modo
+demonstração (mock). Com `SHOPIFY_FIXTURE=1`/`PDV_FIXTURE=1`, as fontes ficam
+"conectadas" via pipeline real (ver abaixo).
 
 ### Modo fictício da Shopify (demonstração sem credenciais)
 
@@ -34,7 +44,7 @@ fictícios, sem rede nem token. Útil para ver a arquitetura funcionando ponta a
 
 ```bash
 echo 'SHOPIFY_FIXTURE=1' >> .env
-npm run db:push
+npm run db:migrate
 npm run sync:shopify -- --full   # backfill fictício -> banco (~3s, ~4k pedidos)
 npm run dev
 ```
@@ -141,4 +151,36 @@ src/lib/data-sources/
 
 ## Banco
 
-SQLite em desenvolvimento (`provider = "sqlite"` em `prisma/schema.prisma`). Para produção, troque para `postgresql` e aponte `DATABASE_URL`.
+**PostgreSQL** (`provider = "postgresql"`), com migrations versionadas em
+`prisma/migrations/`. Aplique com `npm run db:migrate` (produção) ou
+`npm run db:migrate:dev` (criar novas migrations em dev). Todo valor monetário é
+inteiro em centavos.
+
+## Deploy na Vercel
+
+O projeto já está otimizado para serverless: Postgres, migrations no build,
+parceiros/sync no banco, webhook processado de forma síncrona e sincronização
+por **Vercel Cron** (`vercel.json`).
+
+1. **Banco:** no painel da Vercel → *Storage* → criar **Postgres** (ou conectar
+   Neon). Isso injeta `DATABASE_URL`.
+2. **Importar** o repositório como projeto na Vercel.
+3. **Variáveis de ambiente:** para uma demo sem credenciais, defina
+   `SHOPIFY_FIXTURE=1` e `PDV_FIXTURE=1`. Para dados reais, os `SHOPIFY_*`/`PDV_*`.
+   Defina também `CRON_SECRET` (o Cron passa `Authorization: Bearer <CRON_SECRET>`)
+   e, opcionalmente, `SYNC_SECRET` para disparo manual (`?secret=`).
+4. **Build:** o `vercel.json` já usa
+   `prisma generate && prisma migrate deploy && next build` — as migrations são
+   aplicadas no deploy.
+5. **Backfill inicial:** o Cron (`/api/sync/all`, a cada 15 min) popula o banco;
+   ou dispare manualmente `POST /api/sync/all?full=1&secret=<SYNC_SECRET>`. Em
+   volume grande, rode o backfill da sua máquina apontando `DATABASE_URL` para o
+   banco de produção.
+6. **Webhooks/pixel (dados reais):** aponte a Shopify para
+   `https://SEU_APP/api/webhooks/shopify` e o pixel para `/api/pixel`.
+
+**Notas de plano:** no **Hobby**, o Cron roda 1x/dia e as funções têm timeout de
+10s — suficiente para o incremental e para a demo enxuta. Para sync de 15 min e
+backfills maiores, use o **Pro** (as funções de sync já declaram `maxDuration`
+de 300s). O **login de acesso** (Auth.js) ainda precisa ser adicionado para expor
+publicamente com segurança.

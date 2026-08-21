@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readShopifyConfig } from "@/lib/data-sources/shopify/config";
 import { verifyHmac, isKnownTopic } from "@/lib/data-sources/shopify/webhook";
-import { enqueueWebhook } from "@/lib/data-sources/shopify/webhook-queue";
+import { processWebhook } from "@/lib/data-sources/shopify/webhook-queue";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
   const config = readShopifyConfig();
@@ -32,7 +33,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "JSON inválido." }, { status: 400 });
   }
 
-  // Enfileira e responde 200 imediatamente; o processamento roda em background.
-  enqueueWebhook(topic, payload);
+  // Serverless: processa de forma síncrona (uma função morre após responder,
+  // então não dá para "processar em background"). É um upsert rápido.
+  try {
+    await processWebhook({ topic, payload, receivedAt: Date.now() });
+  } catch (err) {
+    // 200 mesmo assim: o backfill incremental (cron) reconcilia depois, e um 5xx
+    // faria a Shopify reentregar em loop. Registra o erro.
+    console.error(`[webhook] falha ao processar ${topic}:`, err);
+    return NextResponse.json({ ok: true, topic, deferred: true });
+  }
   return NextResponse.json({ ok: true, topic });
 }

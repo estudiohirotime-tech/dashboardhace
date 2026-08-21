@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { syncPdv } from "@/lib/data-sources/pdv/sync";
+import { isSyncAuthorized } from "@/lib/sync-auth";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
-export async function POST(req: NextRequest) {
+async function run(req: NextRequest) {
+  if (!isSyncAuthorized(req)) {
+    return NextResponse.json({ ok: false, error: "Não autorizado." }, { status: 401 });
+  }
   const full = req.nextUrl.searchParams.get("full") === "1";
   try {
     const result = await syncPdv({ full });
@@ -14,3 +18,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
+
+export const GET = run;
+export const POST = run;

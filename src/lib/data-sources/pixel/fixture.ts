@@ -10,8 +10,10 @@ import { Rng } from "../mock/rng";
 import { CAMPAIGNS } from "../mock/catalog";
 
 const SEED = "pixel-fixture-2026";
-const WINDOW_DAYS = 35;
-const SESSIONS_PER_DAY = 1200;
+// Volume enxuto para o seed inicial caber no timeout de funções serverless
+// (ex.: 10s no plano Hobby da Vercel). Cobre os presets de período comuns.
+const WINDOW_DAYS = 31;
+const SESSIONS_PER_DAY = 700;
 
 // Mesmas taxas plausíveis usadas no restante do projeto.
 const RATES = {

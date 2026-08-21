@@ -45,6 +45,7 @@ async function bulkInsert(collected: Collected[]): Promise<void> {
   }
   await chunked(Array.from(customerMap.entries()), 400, (chunk) =>
     prisma.customer.createMany({
+      skipDuplicates: true,
       data: chunk.map(([externalId, c]) => ({
         id: customerPk(externalId),
         sourceSystem: "pdv",
@@ -58,6 +59,7 @@ async function bulkInsert(collected: Collected[]): Promise<void> {
 
   await chunked(collected, 400, (chunk) =>
     prisma.order.createMany({
+      skipDuplicates: true,
       data: chunk.map(({ order, externalId, updatedAt }) => ({
         id: orderPk(externalId),
         externalId,

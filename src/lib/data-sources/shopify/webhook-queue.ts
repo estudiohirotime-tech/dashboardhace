@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { webhookOrderSchema, webhookRefundSchema } from "./webhook-schemas";
 import { mapWebhookOrder } from "./webhook-mapper";
 import { upsertOrder } from "./sync";
+import { loadPartnersFromDb } from "../partners-db";
 import { isKnownTopic, type ShopifyWebhookTopic } from "./webhook";
 
 export interface WebhookJob {
@@ -22,6 +23,7 @@ export async function processWebhook(job: WebhookJob): Promise<void> {
     case "orders/create":
     case "orders/updated":
     case "orders/paid": {
+      await loadPartnersFromDb(); // agrupamento de canal usa parceiros do banco
       const payload = webhookOrderSchema.parse(job.payload);
       const { order, externalId, updatedAt } = mapWebhookOrder(payload);
       await upsertOrder(order, externalId, updatedAt);

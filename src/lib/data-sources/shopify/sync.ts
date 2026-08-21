@@ -13,6 +13,7 @@ import { ShopifyGraphQLClient } from "./graphql";
 import { mapShopifyOrder, gidToId } from "./order-mapper";
 import { orderNodeSchema } from "./schemas";
 import { readShopifyConfig } from "./config";
+import { loadPartnersFromDb } from "../partners-db";
 import type { Order } from "../types";
 
 export interface SyncResult {
@@ -61,6 +62,7 @@ async function bulkInsert(collected: CollectedOrder[]): Promise<void> {
     400,
     (chunk) =>
       prisma.customer.createMany({
+        skipDuplicates: true,
         data: chunk.map(([externalId, c]) => ({
           id: c.id,
           sourceSystem: "shopify",
@@ -75,6 +77,7 @@ async function bulkInsert(collected: CollectedOrder[]): Promise<void> {
   // Pedidos.
   await chunked(collected, 400, (chunk) =>
     prisma.order.createMany({
+      skipDuplicates: true,
       data: chunk.map(({ order, externalId, updatedAt }) => ({
         id: orderPk(externalId),
         externalId,
@@ -208,6 +211,7 @@ export async function upsertOrder(order: Order, externalId: string, updatedAt: s
 export async function syncShopify(opts: { full?: boolean } = {}): Promise<SyncResult> {
   const config = readShopifyConfig();
   if (!config) throw new Error("Shopify não configurada (nem credenciais nem modo fixture).");
+  await loadPartnersFromDb(); // agrupamento de canal usa a lista de parceiros do banco
   const client = new ShopifyGraphQLClient(config);
 
   const cursorRow = await prisma.syncCursor.findUnique({ where: { sourceSystem: "shopify" } });
