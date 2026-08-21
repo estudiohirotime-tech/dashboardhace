@@ -156,6 +156,27 @@ src/lib/data-sources/
 `npm run db:migrate:dev` (criar novas migrations em dev). Todo valor monetário é
 inteiro em centavos.
 
+## Deploy na Railway (recomendado)
+
+`railway.json` já configura tudo. O build **não** toca o banco (`prisma generate && next build`);
+as migrations rodam no **start** (`prisma migrate deploy`), quando `DATABASE_URL` já existe.
+
+1. **Projeto:** Railway → *New Project* → *Deploy from GitHub repo* → escolha o repositório e a
+   branch `claude/omnichannel-sales-dashboard-rgr8x7`.
+2. **Banco:** no projeto, *+ New* → *Database* → **PostgreSQL**. A Railway injeta `DATABASE_URL`
+   (conexão direta — `prisma migrate deploy` funciona sem ajuste). Como alternativa, use o
+   Supabase (nesse caso, use a string do **Session pooler**, porta 5432).
+3. **Variáveis** (Service → *Variables*):
+   - `AUTH_SECRET` (obrigatório) · `SHOPIFY_FIXTURE=1` e `PDV_FIXTURE=1` (demo) · `CRON_SECRET` (recomendado).
+   - `DATABASE_URL` já vem do Postgres da Railway; se preferir referenciar, use `${{Postgres.DATABASE_URL}}`.
+4. **Deploy.** A Railway builda e sobe. O app escuta a porta que a Railway define (`PORT`).
+5. **Sincronização (cron):** a Railway não lê o cron do `vercel.json`. Opções:
+   - criar um **Cron Service** na Railway com schedule `*/15 * * * *` e start `curl -fsS "$APP_URL/api/sync/all?secret=$SYNC_SECRET"`; ou
+   - usar um cron externo grátis (cron-job.org) apontando para `/api/sync/all?secret=...`.
+   No modo fixture, o backfill também roda sozinho na primeira leitura, então o cron é opcional.
+
+> `vercel.json` é ignorado pela Railway (fica no repo caso você volte para a Vercel).
+
 ## Deploy na Vercel
 
 O projeto já está otimizado para serverless: Postgres, migrations no build,
