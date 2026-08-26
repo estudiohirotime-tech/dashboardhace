@@ -5,29 +5,38 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "sync:shopify": "tsx scripts/sync-shopify.ts",
+    "sync:pdv": "tsx scripts/sync-pdv.ts",
+    "webhook:simulate": "tsx scripts/simulate-webhook.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",
+    "prisma": "^6.2.1",
     "@tanstack/react-query": "^5.64.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
+    "jose": "^6.2.9",
     "lucide-react": "^0.469.0",
-    "next": "15.1.4",
+    "next": "^15.5.23",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "recharts": "^2.15.0",
+    "server-only": "^0.0.1",
     "tailwind-merge": "^2.6.0",
     "zod": "^3.24.1"
   },
@@ -37,10 +46,12 @@
     "@types/react": "^19.0.4",
     "@types/react-dom": "^19.0.2",
     "postcss": "^8.4.49",
-    "prisma": "^6.2.1",
     "tailwindcss": "^4.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }
