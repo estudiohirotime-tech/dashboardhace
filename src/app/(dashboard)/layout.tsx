@@ -3,7 +3,6 @@ export const dynamic = "force-dynamic";
 import { Providers } from "@/components/providers";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { MobileNav } from "@/components/dashboard/mobile-nav";
-import { RightRail } from "@/components/dashboard/right-rail";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -14,7 +13,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <main className="flex-1">{children}</main>
           <MobileNav />
         </div>
-        <RightRail />
       </div>
     </Providers>
   );

@@ -5,24 +5,20 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
-  Radio,
-  Filter,
-  ShoppingBag,
-  Package,
+  Images,
+  Users,
   Settings,
   PanelLeftClose,
   PanelLeft,
-  Store,
+  Instagram,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/", label: "Visão geral", icon: LayoutDashboard },
-  { href: "/origens", label: "Origens", icon: Radio },
-  { href: "/funil", label: "Funil", icon: Filter },
-  { href: "/pedidos", label: "Pedidos", icon: ShoppingBag },
-  { href: "/produtos", label: "Produtos", icon: Package },
+  { href: "/conteudo", label: "Conteúdo", icon: Images },
+  { href: "/audiencia", label: "Audiência", icon: Users },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 
@@ -55,11 +51,11 @@ export function Sidebar() {
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]"
           style={{ background: "var(--accent-soft)", color: "var(--accent-bright)" }}
         >
-          <Store size={18} />
+          <Instagram size={18} />
         </span>
         {!collapsed && (
           <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-            Omnichannel
+            Insights IG
           </span>
         )}
       </div>

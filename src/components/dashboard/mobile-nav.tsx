@@ -2,14 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Radio, Filter, ShoppingBag, Package, Settings } from "lucide-react";
+import { LayoutDashboard, Images, Users, Settings } from "lucide-react";
 
 const NAV = [
   { href: "/", label: "Geral", icon: LayoutDashboard },
-  { href: "/origens", label: "Origens", icon: Radio },
-  { href: "/funil", label: "Funil", icon: Filter },
-  { href: "/pedidos", label: "Pedidos", icon: ShoppingBag },
-  { href: "/produtos", label: "Produtos", icon: Package },
+  { href: "/conteudo", label: "Conteúdo", icon: Images },
+  { href: "/audiencia", label: "Audiência", icon: Users },
   { href: "/configuracoes", label: "Config", icon: Settings },
 ];
 

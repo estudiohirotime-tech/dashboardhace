@@ -1,12 +1,12 @@
 import { Topbar } from "@/components/dashboard/topbar";
-import { ConfigPanel } from "@/components/dashboard/config-panel";
+import { IgConfig } from "@/components/dashboard/ig-config";
 
 export default function ConfiguracoesPage() {
   return (
     <>
       <Topbar title="Configurações" />
       <div className="p-4 sm:p-6">
-        <ConfigPanel />
+        <IgConfig />
       </div>
     </>
   );

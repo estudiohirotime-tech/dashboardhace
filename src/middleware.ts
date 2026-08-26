@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE, verifySession } from "@/lib/auth";
 
-// Prefixos públicos (não exigem sessão):
-//  - /login e /api/auth: fluxo de autenticação
-//  - /api/pixel e /api/webhooks: recebem POSTs externos (pixel/Shopify)
-//  - /api/sync: protegidos pelo próprio segredo (SYNC_SECRET/CRON_SECRET)
-const PUBLIC_PREFIXES = ["/login", "/api/auth", "/api/pixel", "/api/webhooks", "/api/sync"];
+// Prefixos públicos (não exigem sessão): apenas o fluxo de autenticação.
+// As rotas de dados do Instagram (/api/ig/*) ficam atrás do login.
+const PUBLIC_PREFIXES = ["/login", "/api/auth"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
